@@ -1,0 +1,8 @@
+# Ignore copied .deb files in the package directory
+zramswap-package/*.deb
+
+# Ignore the generated installer
+zramswap-installer.sh
+
+# Ignore any temporary archives
+*.tar.gz
