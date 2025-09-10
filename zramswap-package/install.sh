@@ -69,11 +69,21 @@ install_packages() {
         dialog --infobox "Installing packages with dpkg..." 5 40 > "$CURR_TTY"
     fi
     
-    if ! dpkg -i "$SCRIPT_DIR"/*.deb 2>/dev/null; then
+    # Capture dpkg output for debugging
+    DPKG_OUTPUT=$(dpkg -i "$SCRIPT_DIR"/*.deb 2>&1)
+    DPKG_RESULT=$?
+    
+    if [ $DPKG_RESULT -ne 0 ]; then
         if [ "$AUTO_YES" = "true" ]; then
-            echo "ERROR: Package installation failed! Check dependencies."
+            echo "ERROR: Package installation failed!"
+            echo "DPKG OUTPUT:"
+            echo "$DPKG_OUTPUT"
+            echo ""
+            echo "You may need to run: apt-get install -f"
         else
-            dialog --msgbox "Package installation failed! Check dependencies." 8 50 > "$CURR_TTY"
+            # For dialog mode, show first few lines of error
+            ERROR_SUMMARY=$(echo "$DPKG_OUTPUT" | head -3 | tr '\n' ' ')
+            dialog --msgbox "Package installation failed!\n\nError: $ERROR_SUMMARY\n\nRun with --yes for full debug output." 12 60 > "$CURR_TTY"
         fi
         return 1
     fi
@@ -109,15 +119,35 @@ install_packages() {
         fi
     else
         if [ "$AUTO_YES" = "true" ]; then
-            echo "ERROR: No zramswap config file found!"
+            echo "WARNING: No zramswap config file found!"
             echo "DEBUG: Searched for:"
             echo "  /etc/default/zramswap"
             echo "  /etc/zram-config" 
             echo "  /etc/default/zram-config"
-        else
-            dialog --msgbox "Warning: No zramswap config file found!" 8 50 > "$CURR_TTY"
+            echo "Creating /etc/default/zramswap with default settings..."
         fi
-        return 1
+        
+        # Create the config file if it doesn't exist
+        mkdir -p /etc/default
+        cat > /etc/default/zramswap << 'CONFIG_EOF'
+# Configuration for zram swap
+# Set the amount of RAM to use for zram (in MB)
+ALLOCATION=3072
+
+# Compression algorithm (lz4, lzo, zstd, etc.)
+# Note: ALGO setting only works on kernels newer than 4.x (not available in ArkOS 4.x kernels)
+# ALGO=lz4
+
+# Priority for swap device
+# PRIORITY=5
+CONFIG_EOF
+        
+        if [ "$AUTO_YES" = "true" ]; then
+            echo "DEBUG: Created config file:"
+            cat /etc/default/zramswap
+        else
+            dialog --msgbox "Config file not found, created /etc/default/zramswap with ALLOCATION=3072" 8 60 > "$CURR_TTY"
+        fi
     fi
     
     if [ "$AUTO_YES" = "true" ]; then
