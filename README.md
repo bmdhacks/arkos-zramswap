@@ -15,11 +15,6 @@ Requires the `makeself` tool
 
 ### Build Process
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/arkos-zram-installer.git
-cd arkos-zram-installer
-
-# Build the installer
 ./build-makeself-installer.sh
 ```
 
